@@ -1,0 +1,36 @@
+name: Sync upstream slm
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: slm
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream
+        run: |
+          git remote add upstream https://github.com/AlfCraft07/android_kernel_samsung_mt6768-k419.git
+          git fetch upstream slm
+
+      - name: Rebase onto upstream
+        run: |
+          git rebase upstream/slm
+
+      - name: Push rebased branch
+        run: |
+          git push --force-with-lease origin HEAD:slm
