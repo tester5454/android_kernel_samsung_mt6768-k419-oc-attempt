@@ -39,7 +39,7 @@ jobs:
 
             if echo "$conflicts" | grep -qx '.github/workflows/a13ve.yml'; then
               git checkout --theirs .github/workflows/a13ve.yml
-              git add .github/workflows/a13ve.yml
+              git add -f .github/workflows/a13ve.yml
               GIT_EDITOR=true git rebase --continue
             else
               echo "Unexpected conflict(s):"
