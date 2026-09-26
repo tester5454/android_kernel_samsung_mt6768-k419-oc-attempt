@@ -49,7 +49,9 @@ jobs:
 
             result=$?
           done
-
       - name: Push rebased branch
+        env:
+          PUSH_TOKEN: ${{ secrets.PUSH_TOKEN }}
         run: |
+          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git push --force-with-lease origin HEAD:slm
