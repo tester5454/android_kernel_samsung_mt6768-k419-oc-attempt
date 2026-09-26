@@ -224,7 +224,28 @@ jobs:
               )
 
           PYEOF
+          echo "=========================================="
+          echo "Replacing injected KernelSU tree"
+          echo "=========================================="
 
+          if [ -d "KernelSU-Next/kernel" ]; then
+              echo "[+] Found KernelSU-Next/kernel"
+
+              rm -rf drivers/kernelsu
+              mkdir -p drivers
+
+              cp -a KernelSU-Next/kernel drivers/kernelsu
+
+              echo "[+] KernelSU tree replaced"
+          else
+              echo "::error::KernelSU-Next/kernel does not exist"
+              find KernelSU-Next -maxdepth 3 -type d
+              exit 1
+          fi
+
+          echo "===== KernelSU hook verification ====="
+          grep -R "ksu_init_rc_hook" -n drivers/kernelsu || true
+          grep -R "stop_init_rc_hook" -n drivers/kernelsu || true
           echo "===== KernelSU event.c after patch ====="
           grep -n \
             -E "ksu_sulog_boottime|ktime_get_boottime_ts64|get_monotonic_boottime|struct timespec" \
