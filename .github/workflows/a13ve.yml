@@ -229,11 +229,16 @@ jobs:
           grep -n \
             -E "ksu_sulog_boottime|ktime_get_boottime_ts64|get_monotonic_boottime|struct timespec" \
             KernelSU-Next/kernel/sulog/event.c || true
+          echo "===== KernelSU injected files ====="
+          grep -R "ksu_init_rc_hook" -n drivers/kernelsu || true
+
+          echo "===== rc hook symbols ====="
+          grep -R "rc_hook" -n drivers/kernelsu || true
 
           echo "=========================================="
           echo "✓ KernelSU-Next setup complete"
           echo "=========================================="
-
+       
       # -----------------------------------------------------------------------
       # ANYKERNEL3
       # -----------------------------------------------------------------------
