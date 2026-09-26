@@ -228,18 +228,19 @@ jobs:
           echo "Replacing injected KernelSU tree"
           echo "=========================================="
 
-          if [ -d "KernelSU-Next/kernel" ]; then
-              echo "[+] Found KernelSU-Next/kernel"
+          if [ -d "KernelSU-Next/kernel/kernelsu" ]; then
+              echo "[+] Found KernelSU-Next/kernel/kernelsu"
 
               rm -rf drivers/kernelsu
               mkdir -p drivers
 
-              cp -a KernelSU-Next/kernel drivers/kernelsu
+              cp -a KernelSU-Next/kernel/kernelsu drivers/kernelsu
 
               echo "[+] KernelSU tree replaced"
           else
-              echo "::error::KernelSU-Next/kernel does not exist"
-              find KernelSU-Next -maxdepth 3 -type d
+              echo "::error::KernelSU-Next/kernel/kernelsu does not exist"
+              echo "Available KernelSU layout:"
+              find KernelSU-Next -maxdepth 4 -type d
               exit 1
           fi
 
