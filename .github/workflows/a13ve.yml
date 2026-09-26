@@ -228,19 +228,27 @@ jobs:
           echo "Replacing injected KernelSU tree"
           echo "=========================================="
 
-          if [ -d "KernelSU-Next/kernel/kernelsu" ]; then
-              echo "[+] Found KernelSU-Next/kernel/kernelsu"
+          if [ -d "KernelSU-Next/kernel" ]; then
+              echo "[+] Found KernelSU-Next/kernel"
 
               rm -rf drivers/kernelsu
               mkdir -p drivers
 
-              cp -a KernelSU-Next/kernel/kernelsu drivers/kernelsu
+              cp -a KernelSU-Next/kernel drivers/kernelsu
+
+              # KernelSU-Next keeps uapi outside kernel/
+              if [ -d "KernelSU-Next/uapi" ]; then
+                  cp -a KernelSU-Next/uapi drivers/kernelsu/
+                  echo "[+] Copied uapi"
+              else
+                  echo "::error::KernelSU-Next/uapi missing"
+                  exit 1
+              fi
 
               echo "[+] KernelSU tree replaced"
           else
-              echo "::error::KernelSU-Next/kernel/kernelsu does not exist"
-              echo "Available KernelSU layout:"
-              find KernelSU-Next -maxdepth 4 -type d
+              echo "::error::KernelSU-Next/kernel does not exist"
+              find KernelSU-Next -maxdepth 3 -type d
               exit 1
           fi
 
