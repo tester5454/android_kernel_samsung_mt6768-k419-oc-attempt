@@ -209,90 +209,64 @@ jobs:
               )
 
           PYEOF
-
+          
           echo "=========================================="
-          echo "Replacing injected KernelSU tree"
+          echo "Patching KernelSU-Next Kprobes compatibility"
           echo "=========================================="
 
-          if [ -d "KernelSU-Next/kernel" ]; then
-              echo "[+] Found KernelSU-Next/kernel"
-
-              rm -rf drivers/kernelsu
-              mkdir -p drivers
-
-              cp -a KernelSU-Next/kernel drivers/kernelsu
-              python3 - <<'PYEOF'
+          python3 - <<'PYEOF'
           from pathlib import Path
-          import re
+          import sys
 
-          p = Path("drivers/kernelsu/runtime/ksud_integration.c")
-          s = p.read_text()
+          p = Path("KernelSU-Next/kernel/runtime/ksud_integration.c")
+          content = p.read_text()
 
-          symbol = "bool ksu_init_rc_hook __read_mostly = true;"
+          old = """#ifdef KSU_KPROBES_HOOK
+          static struct work_struct __maybe_unused stop_init_rc_hook_work;
+          static struct work_struct __maybe_unused stop_execve_hook_work;
+          static struct work_struct __maybe_unused stop_input_hook_work;
+          static DECLARE_COMPLETION(stop_input_hook_work_complete);
+          #else
+          bool ksu_init_rc_hook __read_mostly = true;
+          #endif"""
 
-          if symbol not in s:
-              raise SystemExit("ksu_init_rc_hook declaration missing")
+          new = """#ifdef KSU_KPROBES_HOOK
+          static struct work_struct __maybe_unused stop_init_rc_hook_work;
+          static struct work_struct __maybe_unused stop_execve_hook_work;
+          static struct work_struct __maybe_unused stop_input_hook_work;
+          static DECLARE_COMPLETION(stop_input_hook_work_complete);
+          #endif
 
-          before = s[:s.find(symbol)]
+          bool ksu_init_rc_hook __read_mostly = true;"""
 
-          if before.count("#if") > before.count("#endif"):
-              print("[!] ksu_init_rc_hook appears inside preprocessor guard")
-
-              s = s.replace(symbol, "")
-
-              m = re.search(r"(#include .*?\n)+", s)
-
-              if not m:
-                  raise SystemExit("Could not find include block")
-
-              s = (
-                  s[:m.end()]
-                  + "\n"
-                  + symbol
-                  + "\n"
-                  + s[m.end():]
-              )
-
-              p.write_text(s)
-
-              print("[+] moved ksu_init_rc_hook declaration global")
+          if old in content:
+              content = content.replace(old, new, 1)
+              p.write_text(content)
+              print("[ksud_integration.c ksu_init_rc_hook] applied")
+          elif new in content:
+              print("[ksud_integration.c ksu_init_rc_hook] already patched")
           else:
-              print("[+] ksu_init_rc_hook already global")
-
+              print("::error::ksu_init_rc_hook compatibility block not found")
+              sys.exit(1)
           PYEOF
 
-              if [ -d "KernelSU-Next/uapi" ]; then
-                  cp -a KernelSU-Next/uapi drivers/kernelsu/
-                  echo "[+] Copied uapi"
-              else
-                  echo "::error::KernelSU-Next/uapi missing"
-                  exit 1
-              fi
+          echo "===== KernelSU integration verification ====="
+          sed -n '155,185p' KernelSU-Next/kernel/runtime/ksud_integration.c
 
-              echo "[+] KernelSU tree replaced"
-          else
-              echo "::error::KernelSU-Next/kernel does not exist"
-              find KernelSU-Next -maxdepth 3 -type d
-              exit 1
-          fi
+          echo "===== KernelSU symlink verification ====="
+          ls -la drivers/kernelsu
+          readlink -f drivers/kernelsu
 
-          echo "===== KernelSU hook verification ====="
-          grep -R "ksu_init_rc_hook" -n drivers/kernelsu || true
-          grep -R "stop_init_rc_hook" -n drivers/kernelsu || true
-          echo "===== KernelSU event.c after patch ====="
-          grep -n \
-            -E "ksu_sulog_boottime|ktime_get_boottime_ts64|get_monotonic_boottime|struct timespec" \
-            KernelSU-Next/kernel/sulog/event.c || true
-          echo "===== KernelSU injected files ====="
-          grep -R "ksu_init_rc_hook" -n drivers/kernelsu || true
+          echo "===== ksu_init_rc_hook ====="
+          grep -n "ksu_init_rc_hook" drivers/kernelsu/runtime/ksud_integration.c || true
 
-          echo "===== rc hook symbols ====="
-          grep -R "rc_hook" -n drivers/kernelsu || true
+          echo "===== KernelSU version repository ====="
+          git -C KernelSU-Next rev-parse --is-inside-work-tree
+          git -C KernelSU-Next rev-parse HEAD
 
           echo "=========================================="
           echo "✓ KernelSU-Next setup complete"
           echo "=========================================="
-
       # -----------------------------------------------------------------------
       # ANYKERNEL3
       # -----------------------------------------------------------------------
