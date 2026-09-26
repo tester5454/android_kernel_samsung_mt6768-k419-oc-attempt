@@ -3,7 +3,10 @@ name: Galaxy A13 (SM-A137F) Build
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "master", "copilot/**" ]
+    branches:
+      - "main"
+      - "master"
+      - "copilot/**"
 
 jobs:
   build:
@@ -125,23 +128,6 @@ jobs:
 
           # -------------------------------------------------------------------
           # event.c
-          #
-          # Current KernelSU-Next legacy has this compatibility helper:
-          #
-          #   #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
-          #   static inline void ksu_sulog_boottime(struct timespec64 *ts)
-          #   {
-          #       ktime_get_boottime_ts64(ts);
-          #   }
-          #   #else
-          #   static inline void ksu_sulog_boottime(struct timespec *ts)
-          #   {
-          #       get_monotonic_boottime(ts);
-          #   }
-          #   #endif
-          #
-          # Our vendor kernel is numerically 4.14.357 but provides
-          # ktime_get_boottime_ts64() and needs the timespec64 path.
           # -------------------------------------------------------------------
 
           content = EVENT.read_text()
@@ -175,7 +161,6 @@ jobs:
                   "legacy compatibility helper."
               )
 
-          # Current upstream event.c has two conditional timespec declarations.
           old_decl = """#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
           	struct timespec64 ts;
           #else
@@ -224,6 +209,7 @@ jobs:
               )
 
           PYEOF
+
           echo "=========================================="
           echo "Replacing injected KernelSU tree"
           echo "=========================================="
@@ -235,8 +221,46 @@ jobs:
               mkdir -p drivers
 
               cp -a KernelSU-Next/kernel drivers/kernelsu
+              python3 - <<'PYEOF'
+          from pathlib import Path
+          import re
 
-              # KernelSU-Next keeps uapi outside kernel/
+          p = Path("drivers/kernelsu/runtime/ksud_integration.c")
+          s = p.read_text()
+
+          symbol = "bool ksu_init_rc_hook __read_mostly = true;"
+
+          if symbol not in s:
+              raise SystemExit("ksu_init_rc_hook declaration missing")
+
+          before = s[:s.find(symbol)]
+
+          if before.count("#if") > before.count("#endif"):
+              print("[!] ksu_init_rc_hook appears inside preprocessor guard")
+
+              s = s.replace(symbol, "")
+
+              m = re.search(r"(#include .*?\n)+", s)
+
+              if not m:
+                  raise SystemExit("Could not find include block")
+
+              s = (
+                  s[:m.end()]
+                  + "\n"
+                  + symbol
+                  + "\n"
+                  + s[m.end():]
+              )
+
+              p.write_text(s)
+
+              print("[+] moved ksu_init_rc_hook declaration global")
+          else:
+              print("[+] ksu_init_rc_hook already global")
+
+          PYEOF
+
               if [ -d "KernelSU-Next/uapi" ]; then
                   cp -a KernelSU-Next/uapi drivers/kernelsu/
                   echo "[+] Copied uapi"
@@ -268,7 +292,7 @@ jobs:
           echo "=========================================="
           echo "✓ KernelSU-Next setup complete"
           echo "=========================================="
-       
+
       # -----------------------------------------------------------------------
       # ANYKERNEL3
       # -----------------------------------------------------------------------
