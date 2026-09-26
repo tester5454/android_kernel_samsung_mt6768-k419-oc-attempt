@@ -27,10 +27,28 @@ jobs:
           git remote add upstream https://github.com/AlfCraft07/android_kernel_samsung_mt6768-k419.git
           git fetch --no-tags --depth=10 upstream slm
           git fetch --no-tags --depth=10 origin slm
-
       - name: Rebase onto upstream
         run: |
+          set +e
           git rebase upstream/slm
+          result=$?
+          set -e
+
+          while [ "$result" -ne 0 ]; do
+            conflicts=$(git diff --name-only --diff-filter=U)
+
+            if echo "$conflicts" | grep -qx '.github/workflows/a13ve.yml'; then
+              git checkout --theirs .github/workflows/a13ve.yml
+              git add .github/workflows/a13ve.yml
+              GIT_EDITOR=true git rebase --continue
+            else
+              echo "Unexpected conflict(s):"
+              printf '%s\n' "$conflicts"
+              exit 1
+            fi
+
+            result=$?
+          done
 
       - name: Push rebased branch
         run: |
