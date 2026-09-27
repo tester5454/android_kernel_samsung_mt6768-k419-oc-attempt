@@ -1,4 +1,4 @@
-name: Sync upstream slm
+name: Sync upstream legion-mt6768
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          ref: slm
+          ref: legion-mt6768
           token: ${{ secrets.PUSH_TOKEN }}
 
       - name: Configure git
@@ -26,12 +26,12 @@ jobs:
       - name: Add upstream
         run: |
           git remote add upstream https://github.com/AlfCraft07/android_kernel_samsung_mt6768-k419.git
-          git fetch --no-tags --depth=10 upstream slm
-          git fetch --no-tags --depth=10 origin slm
+          git fetch --no-tags --depth=10 upstream legion-mt6768
+          git fetch --no-tags --depth=10 origin legion-mt6768
       - name: Rebase onto upstream
         run: |
           set +e
-          git rebase upstream/slm
+          git rebase upstream/legion-mt6768
           result=$?
           set -e
 
@@ -52,4 +52,4 @@ jobs:
           done
       - name: Push rebased branch
         run: |
-          git push --force-with-lease origin HEAD:slm
+          git push --force-with-lease origin HEAD:legion-mt6768
